@@ -19,15 +19,24 @@ services:
       # NVIDIA runtime plumbing.
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
-      # Remote-SSH (opt-in). Requires TCP exposure — see docs/remote-ssh.md for
-      # the Traefik-TCP-entrypoint vs. direct `ports:` mapping trade-off.
+      # ---- Remote-SSH (optional) ------------------------------------------
+      # Lets VS Code Desktop / Cursor / Windsurf attach via Remote-SSH.
+      # Full walk-through: docs/dokploy.md § "Enabling Remote-SSH".
+      # Uncomment the 3 lines below, paste your pubkey, and also uncomment
+      # the `ports: "2222:2222"` block further down.
       # ENABLE_SSHD: "true"
+      # SSH_PORT: "2222"
       # SSH_AUTHORIZED_KEYS: "ssh-ed25519 AAAAC3Nz... you@laptop"
+      # ---------------------------------------------------------------------
     expose:
       - "8080"
-    # To enable Remote-SSH, either add `ports: ["2222:2222"]` here (simplest —
-    # bypasses Traefik, firewall the host port yourself) OR configure a Traefik
-    # TCP entrypoint in Dokploy settings. See docs/remote-ssh.md.
+    # ---- Remote-SSH port (optional) -------------------------------------
+    # Uncomment when enabling ENABLE_SSHD above. This bypasses Traefik and
+    # maps port 2222 directly on the host. Steps on the Dokploy host:
+    #   1. `sudo ufw allow from <your-laptop-ip>/32 to any port 2222 proto tcp`
+    #   2. Add DNS: `ssh.<your-domain>` A-record → this host's IP.
+    #   3. Redeploy; from your laptop: `ssh -p 2222 coder@ssh.<your-domain>`
+    # For Traefik TCP entrypoint routing instead, see docs/remote-ssh.md.
     # ports:
     #   - "2222:2222"
     volumes:

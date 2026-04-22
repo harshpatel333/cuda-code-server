@@ -125,9 +125,16 @@ spec:
       targetPort: 8080
   type: ClusterIP
 ---
-# Optional Remote-SSH service. Enable with ENABLE_SSHD=true + SSH_AUTHORIZED_KEYS
-# on the Deployment. Pick LoadBalancer on cloud clusters (stable external IP) or
-# NodePort on bare metal / single-node. See docs/remote-ssh.md.
+# Optional Remote-SSH service for VS Code Desktop / Cursor / Windsurf.
+# Full walk-through: docs/remote-ssh.md. Quick version:
+#   1. Uncomment the ENABLE_SSHD + SSH_AUTHORIZED_KEYS env vars on the
+#      Deployment above.
+#   2. Uncomment the Service below (pick LoadBalancer on cloud for a stable
+#      external IP, or NodePort on bare-metal / single-node clusters).
+#   3. Apply, then `kubectl get svc cuda-code-server-ssh` to grab the
+#      external IP (LoadBalancer) or node IP + nodePort.
+#   4. Add a DNS A record — e.g., `ssh.code.example.com` → that IP.
+#   5. From your laptop: `ssh -p 2222 coder@ssh.code.example.com`.
 #
 # apiVersion: v1
 # kind: Service
@@ -141,6 +148,7 @@ spec:
 #     - name: ssh
 #       port: 2222
 #       targetPort: 2222
+#       # nodePort: 32222       # only if type: NodePort — pick 30000-32767
 # ---
 # Uncomment and edit if you're using cert-manager + nginx-ingress (or equivalent).
 # The long proxy timeouts matter for the WebSocket used by the code-server UI.

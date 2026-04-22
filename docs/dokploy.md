@@ -92,6 +92,120 @@ deploy:
       memory: 8G
 ```
 
+## Enabling Remote-SSH (optional)
+
+The image bundles `openssh-server`. Turning it on lets you connect from VS Code Desktop, Cursor, or Windsurf via the Remote-SSH extension — useful for Microsoft-exclusive extensions (Pylance, Copilot, C/C++ IntelliSense) that the browser IDE's Open VSX marketplace doesn't have.
+
+This section is the Dokploy-specific walk-through; for per-editor setup and the full `~/.ssh/config` template, see [`docs/remote-ssh.md`](./remote-ssh.md).
+
+### 1. Pick a DNS hostname for SSH
+
+Your main domain (e.g. `code.example.com`) already points at the Dokploy host for HTTPS. For SSH you have two reasonable choices:
+
+- **Separate subdomain (recommended):** `ssh.code.example.com` → A/AAAA record to the same Dokploy host IP. Lets you firewall and scope SSH independently of HTTPS, and reads nicely in `~/.ssh/config`.
+- **Same domain, non-standard port:** connect to `code.example.com:2222`. Fewer DNS records, slightly noisier config.
+
+Add the A record at your DNS provider before redeploying — the host already resolves, it just needs a new label.
+
+### 2. Expose port 2222 on the Dokploy host
+
+Dokploy's Traefik routes HTTP through ports 80/443 by default, but SSH is TCP. Simplest path: bypass Traefik and map port 2222 directly on the host via a `ports:` block in the compose file. Update `examples/dokploy/docker-compose.yml` (or the compose you pasted into Dokploy's Raw provider) so the service has:
+
+```yaml
+services:
+  devcontainer:
+    # ... existing config ...
+    expose:
+      - "8080"
+    ports:
+      - "2222:2222"      # Remote-SSH (bypasses Traefik; firewall on the host)
+```
+
+Open port 2222 on the host firewall, restricted to your laptop's IP whenever possible:
+
+```bash
+sudo ufw allow from <your-laptop-ip>/32 to any port 2222 proto tcp
+# Or for an office / VPN range:
+sudo ufw allow from 10.0.0.0/8 to any port 2222 proto tcp
+```
+
+SSH key auth is strong, but narrowing the reachable population is defence in depth.
+
+If you'd rather keep everything behind Traefik (TCP entrypoint + `HostSNI` router), see `docs/remote-ssh.md § Dokploy Option B` — more invasive but doesn't require a separate host-port hole.
+
+### 3. Set the SSH env vars
+
+In Dokploy's *Environment* tab on the service, add:
+
+| Key | Value |
+|---|---|
+| `ENABLE_SSHD` | `true` |
+| `SSH_AUTHORIZED_KEYS` | Paste the contents of `~/.ssh/id_ed25519.pub` (one key per line for multiple) |
+| `SSH_PORT` | `2222` (optional — `2222` is the default) |
+
+Click *Redeploy*.
+
+### 4. Verify the connection
+
+From your laptop:
+
+```bash
+ssh -p 2222 coder@ssh.code.example.com
+# Expected:
+# Welcome to ... (ubuntu 22.04)
+# (.venv) coder@<container-id>:~/project$
+```
+
+First connection prompts for host-key verification — compare the fingerprint to what the container reports. From the code-server browser terminal:
+
+```bash
+ssh-keygen -l -f /home/coder/.ssh/host_keys/ssh_host_ed25519_key.pub
+```
+
+Once verified, it's trusted in `~/.ssh/known_hosts` and future connections are silent.
+
+### 5. Wire up VS Code Desktop / Cursor / Windsurf
+
+Add to local `~/.ssh/config`:
+
+```
+Host cuda-code-server
+  HostName ssh.code.example.com
+  Port 2222
+  User coder
+  IdentityFile ~/.ssh/id_ed25519
+  ServerAliveInterval 60
+  ServerAliveCountMax 5
+  ForwardAgent yes          # optional — lets `git push` on the remote use local keys
+```
+
+Then in VS Code Desktop or Cursor:
+
+1. Install the **Remote - SSH** extension.
+2. <kbd>F1</kbd> → *Remote-SSH: Connect to Host...* → `cuda-code-server`.
+3. *File → Open Folder* → `/home/coder/project`.
+
+You now have a native IDE window that executes everything — terminal, GPU, extensions — inside the Dokploy-hosted container. VS Code Desktop specifically can also use the Microsoft marketplace (Pylance, Copilot, etc.) over this connection.
+
+### 6. Adding and removing keys later
+
+- **Add** — append a line to the `SSH_AUTHORIZED_KEYS` env var in Dokploy and redeploy (keys merge idempotently — duplicates are skipped). Or just edit `~/.ssh/authorized_keys` in the browser terminal.
+- **Remove** — `SSH_AUTHORIZED_KEYS` is append-only by design so a mid-session redeploy can't lock you out. To remove a key, edit `/home/coder/.ssh/authorized_keys` directly and delete the line.
+
+### 7. Rotate host keys (if ever needed)
+
+```bash
+# From the code-server terminal:
+sudo rm -rf /home/coder/.ssh/host_keys
+# Then in Dokploy: Redeploy — new host keys generate on boot.
+```
+
+Clients get a "host key changed" warning on next connect; clear the stale known_hosts entry:
+
+```bash
+ssh-keygen -R '[ssh.code.example.com]:2222'
+```
+
 ## Updating the image
 
 1. Edit the `image:` tag in the compose file (e.g., `12.6-py312` → `0.2-12.6-py312`).
