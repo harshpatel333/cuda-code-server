@@ -20,7 +20,8 @@ Initial v0.1.0 feature set:
 - OCI image labels, healthcheck on `/healthz`, `EXPOSE 8080`.
 - GitHub Actions workflow: parallel matrix build on PR/push/tag, GHCR + Docker Hub dual publishing, metadata-driven tags (`<cuda>-py<python>`, `latest`, semver variants, SHA-pinned), Docker Hub README sync on `main`.
 - Deployment examples: Dokploy (Raw compose), plain Docker Compose, Kubernetes.
-- Documentation: `README.md`, `docs/usage.md` (connecting, extensions, persistence, troubleshooting), `docs/dokploy.md` (step-by-step guide).
+- Baked-in `openssh-server` for Remote-SSH access from VS Code Desktop, Cursor, Windsurf, and other VS Code forks. Off by default; opt in with `ENABLE_SSHD=true` + `SSH_AUTHORIZED_KEYS`. Hardened config (public-key only, `coder`-only, no root, no password auth). Host keys persist on the `/home/coder` volume so reconnects don't warn.
+- Documentation: `README.md`, `docs/usage.md` (connecting, extensions, persistence, troubleshooting), `docs/dokploy.md` (step-by-step deploy guide), `docs/remote-ssh.md` (baked-in sshd + per-editor connection walk-throughs).
 
 ### Roadmap (not in v0.1.0 — tracked as follow-ups)
 

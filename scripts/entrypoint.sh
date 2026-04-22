@@ -48,7 +48,15 @@ if [ -S /var/run/docker.sock ]; then
     fi
 fi
 
-# --- 3. Append CODE_SERVER_ARGS to the command ------------------------------
+# --- 3. Optional sshd for Remote-SSH from VS Code / Cursor / Windsurf -------
+# Enable with ENABLE_SSHD=true, supply SSH_AUTHORIZED_KEYS at deploy time
+# (or edit ~/.ssh/authorized_keys from the code-server terminal afterwards).
+# See docs/remote-ssh.md for the full walk-through.
+if [ "${ENABLE_SSHD:-false}" = "true" ]; then
+    /usr/local/bin/sshd-setup.sh &
+fi
+
+# --- 4. Append CODE_SERVER_ARGS to the command ------------------------------
 # Lets users extend the default CMD via env var, e.g.
 #   CODE_SERVER_ARGS="--cert --cert-host code.example.com"
 if [ -n "${CODE_SERVER_ARGS:-}" ]; then
@@ -57,5 +65,5 @@ if [ -n "${CODE_SERVER_ARGS:-}" ]; then
     set -- "$@" "${extra[@]}"
 fi
 
-# --- 4. Drop to `coder` and exec --------------------------------------------
+# --- 5. Drop to `coder` and exec --------------------------------------------
 exec gosu coder "$@"

@@ -39,10 +39,11 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates curl wget gnupg lsb-release software-properties-common \
         tzdata locales sudo gosu \
-        git git-lfs openssh-client \
+        git git-lfs openssh-client openssh-server \
         build-essential pkg-config \
         jq tmux htop less unzip ripgrep \
         vim nano \
+    && rm -f /etc/ssh/ssh_host_* \
     && rm -rf /var/lib/apt/lists/*
 
 # -----------------------------------------------------------------------------
@@ -160,6 +161,8 @@ RUN { \
 # -----------------------------------------------------------------------------
 USER root
 COPY --chmod=0755 scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY --chmod=0755 scripts/sshd-setup.sh /usr/local/bin/sshd-setup.sh
+COPY config/sshd_config.d/cuda-code-server.conf /etc/ssh/sshd_config.d/cuda-code-server.conf
 
 LABEL org.opencontainers.image.title="cuda-code-server" \
       org.opencontainers.image.description="GPU-accelerated VS Code server with CUDA, cuDNN, PyTorch, and Claude Code CLI preinstalled." \

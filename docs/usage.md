@@ -37,18 +37,42 @@ Two fixes, either works:
 
 ## 2. Connecting from local VS Code
 
-The fastest path for most users is to keep using the browser tab (installed as a PWA, you won't notice the difference). If you specifically want Remote-SSH from your desktop VS Code, it's a deployment choice — the default compose / k8s configs don't expose SSH. Two ways to add it:
+The browser IDE is the fastest path for casual work — install it as a PWA and it behaves like a native app. For deeper workflows (Microsoft-exclusive extensions like Pylance or Copilot, SSH-agent forwarding, native window chrome), use **Remote-SSH**.
 
-- **Sidecar `sshd` service** — add a second container to your compose file that runs `openssh-server`, shares the `home` and `project` volumes, and exposes port 22 (to a separate hostname or a non-standard port).
-- **In-image `sshd`** — extend the image via a child Dockerfile that installs and starts `openssh-server`, then expose port 22.
+The image ships with `openssh-server` baked in, off by default. Enable it with three env vars on your deployment:
 
-Once SSH is up, install the **Remote - SSH** extension in local VS Code, add the host to `~/.ssh/config`, connect, open `/home/coder/project`.
+```yaml
+environment:
+  ENABLE_SSHD: "true"
+  SSH_PORT: "2222"                                             # optional, 2222 is the default
+  SSH_AUTHORIZED_KEYS: "ssh-ed25519 AAAAC3Nz... you@laptop"
+```
 
-If your deployment sits behind a Traefik / ingress that only routes the code-server HTTP port, doing Remote-SSH through that isn't usually worth the YAML — the browser UI is already effectively native when run as a PWA.
+Then expose port `2222` — the mechanism depends on your deployment target (Dokploy: direct host port or Traefik TCP entrypoint; Kubernetes: `Service` of type `NodePort` / `LoadBalancer`; plain Docker: `-p 2222:2222`).
+
+Connect from local VS Code:
+
+1. Install the **Remote - SSH** extension.
+2. Add to `~/.ssh/config`:
+
+   ```
+   Host cuda-code-server
+     HostName your-deployment.example.com
+     Port 2222
+     User coder
+     IdentityFile ~/.ssh/id_ed25519
+   ```
+
+3. <kbd>F1</kbd> → *Remote-SSH: Connect to Host...* → `cuda-code-server`.
+4. *File → Open Folder* → `/home/coder/project`.
+
+Full walk-through (Cursor, Windsurf, plain `ssh`, Dokploy TCP exposure, `~/.ssh/config` template, key rotation, troubleshooting): **[docs/remote-ssh.md](./remote-ssh.md)**.
 
 ## 3. Connecting from Cursor, Windsurf, and other VS Code forks
 
-Same approach as VS Code — the popular forks all ship compatible Remote extensions. One caveat: Cursor's extension marketplace is Open VSX (same as code-server), so extension availability is identical across both sides. If you're mixing (Cursor on the laptop, code-server in the container), you'll have the same Microsoft-exclusive extension gaps on both.
+Same as VS Code — Cursor and Windsurf both ship compatible Remote-SSH extensions. Same `~/.ssh/config` entry, same connect flow. One caveat: Cursor's marketplace is Open VSX (same as code-server), so Microsoft-exclusive extensions aren't available in Cursor even over Remote-SSH. Free equivalents (Pyright, clangd, Continue) work fine.
+
+Per-fork specifics in **[docs/remote-ssh.md](./remote-ssh.md)**.
 
 ## 4. The integrated terminal
 

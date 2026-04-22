@@ -19,8 +19,17 @@ services:
       # NVIDIA runtime plumbing.
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      # Remote-SSH (opt-in). Requires TCP exposure — see docs/remote-ssh.md for
+      # the Traefik-TCP-entrypoint vs. direct `ports:` mapping trade-off.
+      # ENABLE_SSHD: "true"
+      # SSH_AUTHORIZED_KEYS: "ssh-ed25519 AAAAC3Nz... you@laptop"
     expose:
       - "8080"
+    # To enable Remote-SSH, either add `ports: ["2222:2222"]` here (simplest —
+    # bypasses Traefik, firewall the host port yourself) OR configure a Traefik
+    # TCP entrypoint in Dokploy settings. See docs/remote-ssh.md.
+    # ports:
+    #   - "2222:2222"
     volumes:
       - home:/home/coder
       - project:/home/coder/project

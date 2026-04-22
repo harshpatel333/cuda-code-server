@@ -55,6 +55,8 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+            - containerPort: 2222
+              name: ssh
           env:
             - name: PASSWORD
               valueFrom:
@@ -67,6 +69,14 @@ spec:
               value: all
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: compute,utility
+            # Optional: Remote-SSH for VS Code Desktop / Cursor / Windsurf.
+            # See docs/remote-ssh.md.
+            # - name: ENABLE_SSHD
+            #   value: "true"
+            # - name: SSH_AUTHORIZED_KEYS
+            #   value: |
+            #     ssh-ed25519 AAAAC3Nz... you@laptop
+            #     ssh-ed25519 BBBBC3Nz... you@desktop
           resources:
             limits:
               nvidia.com/gpu: 1
@@ -115,6 +125,23 @@ spec:
       targetPort: 8080
   type: ClusterIP
 ---
+# Optional Remote-SSH service. Enable with ENABLE_SSHD=true + SSH_AUTHORIZED_KEYS
+# on the Deployment. Pick LoadBalancer on cloud clusters (stable external IP) or
+# NodePort on bare metal / single-node. See docs/remote-ssh.md.
+#
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: cuda-code-server-ssh
+# spec:
+#   selector:
+#     app: cuda-code-server
+#   type: LoadBalancer          # or NodePort
+#   ports:
+#     - name: ssh
+#       port: 2222
+#       targetPort: 2222
+# ---
 # Uncomment and edit if you're using cert-manager + nginx-ingress (or equivalent).
 # The long proxy timeouts matter for the WebSocket used by the code-server UI.
 #

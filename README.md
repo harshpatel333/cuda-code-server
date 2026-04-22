@@ -128,9 +128,23 @@ The full reference is [docs/usage.md](./docs/usage.md). Compact version below.
 
 Open the deployed URL, enter `PASSWORD`. The tab is a full VS Code — extensions install, the integrated terminal is a real bash shell inside the container, keyboard shortcuts work. Gotcha: <kbd>Ctrl</kbd>+<kbd>W</kbd> closes the browser tab — fix by installing the page as a PWA (Chromium address bar → *Install*) or by rebinding the shortcut in code-server settings.
 
-### Local VS Code / Cursor / Windsurf
+### Local VS Code / Cursor / Windsurf (Remote-SSH)
 
-Using the browser IDE (installed as a PWA) is the fastest path for most users. If you specifically need Remote-SSH from desktop VS Code or a fork (Cursor, Windsurf, etc.), expose an `sshd` sidecar in your deployment and connect to it — covered in `docs/usage.md`.
+The image ships with `openssh-server` baked in — off by default. Set `ENABLE_SSHD=true`, supply `SSH_AUTHORIZED_KEYS`, expose port `2222`, and connect from VS Code Desktop (or Cursor / Windsurf) with the Remote-SSH extension. Full step-by-step for each editor — including `~/.ssh/config`, Dokploy TCP exposure, Kubernetes `Service`, and troubleshooting — lives at **[docs/remote-ssh.md](./docs/remote-ssh.md)**.
+
+One-liner for plain `docker run`:
+
+```bash
+docker run -d --gpus all \
+  -e PASSWORD="$PASSWORD" \
+  -e ENABLE_SSHD=true \
+  -e SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/id_ed25519.pub)" \
+  -p 8080:8080 -p 2222:2222 \
+  -v cuda-code-server-home:/home/coder -v cuda-code-server-project:/home/coder/project \
+  ghcr.io/harshpatel333/cuda-code-server:latest
+```
+
+Then `ssh -p 2222 coder@<host>` works, and VS Code Desktop's <kbd>F1</kbd> → *Remote-SSH: Connect to Host* gives you a native-feeling IDE with access to the **Microsoft marketplace** (Pylance, Copilot, C/C++ IntelliSense) — the extensions the browser IDE can't use.
 
 ### Integrated terminal
 
@@ -191,6 +205,9 @@ Environment variables. All are read by the container at startup.
 | `SUDO_PASSWORD` | no | Sudo password inside the container. Unset = passwordless (recommended for dev). |
 | `TZ` | no | Timezone (e.g., `America/New_York`). Default `UTC`. |
 | `CODE_SERVER_ARGS` | no | Extra args appended to the default `code-server` command. |
+| `ENABLE_SSHD` | no | Start `sshd` for Remote-SSH access (VS Code Desktop / Cursor / Windsurf). Default `false`. |
+| `SSH_PORT` | no | Port for `sshd` (default `2222`). |
+| `SSH_AUTHORIZED_KEYS` | no | Newline-separated public keys; merged into `authorized_keys` on boot. |
 | `NVIDIA_VISIBLE_DEVICES` | no | Standard NVIDIA runtime var. Set to `all` for all GPUs. |
 | `NVIDIA_DRIVER_CAPABILITIES` | no | Standard NVIDIA runtime var. Typical: `compute,utility`. |
 
@@ -298,6 +315,10 @@ Pull the new tag, recreate the container with the same volume mounts. Persistent
 ### How do I remove the bundled Claude Code CLI?
 
 Build your own variant with `--build-arg INSTALL_CLAUDE_CODE=false`, or run `sudo npm uninstall -g @anthropic-ai/claude-code` at runtime (non-persistent — reinstalled on the next image pull).
+
+### How do I connect from VS Code Desktop or Cursor (not just the browser)?
+
+The image bundles `openssh-server`. Set `ENABLE_SSHD=true` + `SSH_AUTHORIZED_KEYS="$(cat ~/.ssh/id_ed25519.pub)"`, expose port `2222`, then use your IDE's Remote-SSH extension. Full guide: **[docs/remote-ssh.md](./docs/remote-ssh.md)**.
 
 ## Contributing
 
