@@ -1,0 +1,27 @@
+# Project spec (kept locally, not tracked)
+cuda-code-server-spec.md
+
+# Local Claude Code / agent state
+.claude/
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+
+# Editor / IDE local config
+.vscode/
+.idea/

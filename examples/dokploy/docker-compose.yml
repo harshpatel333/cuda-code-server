@@ -1,0 +1,49 @@
+# Dokploy Raw Compose deployment for cuda-code-server.
+#
+# Paste into Dokploy's Compose service (Raw provider), set PASSWORD in the
+# Environment tab, and configure your domain in the Domains tab pointing at
+# port 8080. Do NOT add Traefik labels here — Dokploy wires them from the GUI.
+#
+# See docs/dokploy.md for the full walkthrough.
+
+services:
+  devcontainer:
+    image: ghcr.io/harshpatel333/cuda-code-server:latest
+    restart: unless-stopped
+    environment:
+      # Required. Set in Dokploy's Environment tab — never commit this.
+      PASSWORD: ${PASSWORD:?PASSWORD must be set}
+      # Optional — leave unset for passwordless sudo inside the container.
+      SUDO_PASSWORD: ${SUDO_PASSWORD:-}
+      TZ: ${TZ:-UTC}
+      # NVIDIA runtime plumbing.
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    expose:
+      - "8080"
+    volumes:
+      - home:/home/coder
+      - project:/home/coder/project
+      # Enables `docker` CLI against the host daemon. Remove if you don't need it —
+      # it grants root-on-host to anyone with code-server access.
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - dokploy-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  home:
+    # Prefixing with COMPOSE_PROJECT_NAME avoids collisions across Dokploy redeploys.
+    name: ${COMPOSE_PROJECT_NAME:-cuda-code-server}-home
+  project:
+    name: ${COMPOSE_PROJECT_NAME:-cuda-code-server}-project
+
+networks:
+  dokploy-network:
+    external: true

@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest a new feature for cuda-code-server
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What do you want to add or change?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why_in_base
+    attributes:
+      label: Why in the base image (vs. a child Dockerfile)?
+      description: |
+        This image stays small and opinionated. Project-specific tooling (Jupyter kernels, R,
+        Julia, particular ML libs) is usually better added via a child Dockerfile that `FROM`s
+        this one. Make the case for why this belongs in the base image rather than a user's
+        extension layer.
+    validations:
+      required: true

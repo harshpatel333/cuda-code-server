@@ -1,0 +1,67 @@
+name: Bug report
+description: Report a problem running cuda-code-server
+labels: [bug]
+body:
+  - type: input
+    id: image_tag
+    attributes:
+      label: Image tag
+      description: The full image reference you're running, including tag.
+      placeholder: ghcr.io/harshpatel333/cuda-code-server:12.6-py312
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deploy_target
+    attributes:
+      label: Deployment target
+      options:
+        - Dokploy
+        - Docker Compose
+        - Plain docker run
+        - Kubernetes
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what_happened
+    attributes:
+      label: What happened?
+      description: What did you observe, and what did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: |
+        Minimal steps to reproduce. Include the exact `docker run` command, compose file,
+        or `kubectl` commands you used.
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: host_env
+    attributes:
+      label: Host environment
+      description: OS / kernel, Docker version, NVIDIA driver version, GPU model.
+      placeholder: |
+        OS: Ubuntu 24.04
+        Docker: 28.5.1
+        NVIDIA driver: 550.54.15
+        GPU: RTX 4090
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Container logs
+      description: Output of `docker logs <container>` (or `kubectl logs`), or the relevant portion.
+      render: text
+    validations:
+      required: false

@@ -1,0 +1,37 @@
+# Standalone Docker Compose deployment for cuda-code-server.
+#
+# No reverse proxy; port 8080 is exposed directly on the host. Suitable for a
+# dev box on a trusted network. For anything internet-facing, front it with a
+# TLS-terminating proxy and an auth layer (see SECURITY.md).
+#
+# Usage:
+#   PASSWORD=$(openssl rand -base64 24) docker compose up -d
+
+services:
+  devcontainer:
+    image: ghcr.io/harshpatel333/cuda-code-server:latest
+    restart: unless-stopped
+    environment:
+      PASSWORD: ${PASSWORD:?PASSWORD must be set}
+      SUDO_PASSWORD: ${SUDO_PASSWORD:-}
+      TZ: ${TZ:-UTC}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    ports:
+      - "8080:8080"
+    volumes:
+      - home:/home/coder
+      - project:/home/coder/project
+      # Comment the next line out if you don't need `docker` CLI inside the container.
+      - /var/run/docker.sock:/var/run/docker.sock
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  home:
+  project:

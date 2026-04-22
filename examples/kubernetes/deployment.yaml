@@ -1,0 +1,144 @@
+# Kubernetes deployment for cuda-code-server.
+#
+# Prerequisites on the cluster:
+#   - NVIDIA device plugin: https://github.com/NVIDIA/k8s-device-plugin
+#   - A default StorageClass that supports ReadWriteOnce
+#
+# Before `kubectl apply -f deployment.yaml`, create the password secret:
+#   kubectl create secret generic cuda-code-server \
+#     --from-literal=password="$(openssl rand -base64 24)"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cuda-code-server-home
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: cuda-code-server-project
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 100Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cuda-code-server
+  labels:
+    app: cuda-code-server
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate  # avoid two pods fighting over the RWO PVCs on update
+  selector:
+    matchLabels:
+      app: cuda-code-server
+  template:
+    metadata:
+      labels:
+        app: cuda-code-server
+    spec:
+      # Optional: pin to a GPU node.
+      # nodeSelector:
+      #   nvidia.com/gpu.present: "true"
+      containers:
+        - name: devcontainer
+          image: ghcr.io/harshpatel333/cuda-code-server:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: cuda-code-server
+                  key: password
+            - name: TZ
+              value: UTC
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: compute,utility
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+              memory: 16Gi
+              cpu: "4"
+            requests:
+              memory: 4Gi
+              cpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: home
+              mountPath: /home/coder
+            - name: project
+              mountPath: /home/coder/project
+      volumes:
+        - name: home
+          persistentVolumeClaim:
+            claimName: cuda-code-server-home
+        - name: project
+          persistentVolumeClaim:
+            claimName: cuda-code-server-project
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cuda-code-server
+spec:
+  selector:
+    app: cuda-code-server
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+  type: ClusterIP
+---
+# Uncomment and edit if you're using cert-manager + nginx-ingress (or equivalent).
+# The long proxy timeouts matter for the WebSocket used by the code-server UI.
+#
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: cuda-code-server
+#   annotations:
+#     cert-manager.io/cluster-issuer: letsencrypt-prod
+#     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+#     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+# spec:
+#   ingressClassName: nginx
+#   tls:
+#     - hosts: [code.example.com]
+#       secretName: cuda-code-server-tls
+#   rules:
+#     - host: code.example.com
+#       http:
+#         paths:
+#           - path: /
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: cuda-code-server
+#                 port:
+#                   number: 80
