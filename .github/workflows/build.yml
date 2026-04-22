@@ -119,8 +119,14 @@ jobs:
             TORCH_CUDA=${{ matrix.torch_cuda }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.cuda_short }}-py${{ matrix.py_short }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.cuda_short }}-py${{ matrix.py_short }}
+          # Scope cache by ref_name so parallel main-branch + tag pushes don't
+          # race on the same blob (caused BlobNotFound in the v0.1.0 release
+          # build). Fall back to main's cache for cold-start tag builds so we
+          # still get cache hits on the first push of a new tag.
+          cache-from: |
+            type=gha,scope=${{ github.ref_name }}-${{ matrix.cuda_short }}-py${{ matrix.py_short }}
+            type=gha,scope=main-${{ matrix.cuda_short }}-py${{ matrix.py_short }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}-${{ matrix.cuda_short }}-py${{ matrix.py_short }}
 
   update-dockerhub-description:
     name: Sync README to Docker Hub

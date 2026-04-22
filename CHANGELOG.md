@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- CI: scope the buildx gha cache by `github.ref_name` in addition to matrix variant, so a main-branch push and a tag push running in parallel don't race on the same cache blob (`BlobNotFound` error observed during the v0.1.0 release). Tag builds still fall back to reading `main`'s cache so first-time tag pushes aren't cold.
+
 ### Planned (not yet implemented)
 
 - Ubuntu 24.04 variants.
